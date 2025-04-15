@@ -40,7 +40,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 	quit := make(chan struct{})
 
 	numWorker := 5
-	stopProducerChan := make(chan struct{}, numWorker)
+	stopRequestChan := make(chan struct{}, numWorker)
 	group, ctx := errgroup.WithContext(ctx)
 
 	go func() {
@@ -69,7 +69,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 				}
 
 				if len(response) == 0 {
-					stopProducerChan <- struct{}{}
+					stopRequestChan <- struct{}{}
 					return nil
 				}
 
@@ -82,7 +82,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 	}
 
 	group.Go(func() error {
-		<-stopProducerChan
+		<-stopRequestChan
 		close(quit)
 		return nil
 	})
