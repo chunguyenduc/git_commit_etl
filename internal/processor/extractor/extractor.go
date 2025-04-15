@@ -70,6 +70,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 
 				if len(response) == 0 {
 					stopProducerChan <- struct{}{}
+					return nil
 				}
 
 				mu.Lock()
