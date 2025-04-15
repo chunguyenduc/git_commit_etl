@@ -33,6 +33,8 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 
 	requestChan := make(chan *github.ListCommitRequest)
 	quit := make(chan struct{})
+	stop := make(chan struct{}, 3)
+	group, ctx := errgroup.WithContext(ctx)
 
 	go func() {
 		defer close(requestChan)
@@ -51,19 +53,34 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 		}
 	}()
 
-	for request := range requestChan {
-		response, err := e.client.ListCommits(ctx, request)
-		if err != nil {
-			return nil, err
-		}
+	for i := 0; i < 3; i++ {
+		group.Go(func() error {
+			for request := range requestChan {
+				response, err := e.client.ListCommits(ctx, request)
+				if err != nil {
+					return err
+				}
 
-		if len(response) == 0 {
-			close(quit)
-		}
+				if len(response) == 0 {
+					stop <- struct{}{}
+				}
 
-		mu.Lock()
-		result = append(result, response...)
-		mu.Unlock()
+				mu.Lock()
+				result = append(result, response...)
+				mu.Unlock()
+			}
+			return nil
+		})
+	}
+
+	group.Go(func() error {
+		<-stop
+		close(quit)
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		return nil, err
 	}
 
 	return &model.ExtractedData{
@@ -82,6 +99,7 @@ func (e *Extractor) Run(ctx context.Context) error {
 		logger := log.Ctx(ctx).With().Str("start_date", utils.ToDateStr(startDate)).Str("end_date", utils.ToDateStr(endDate)).Logger()
 
 		group.Go(func() error {
+			logger.Info().Msg("Start fetching commits")
 			extractedData, err := e.CollectCommitsByDate(ctx, startDate, endDate)
 			if err != nil {
 				return err

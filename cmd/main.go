@@ -9,13 +9,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func main() {
 	initLogger := logger.InitLogger()
 	ctx := initLogger.WithContext(context.Background())
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	cfg, err := config.LoadConfig(ctx)
 	if err != nil {
@@ -33,6 +33,4 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
 	log.Info().Msg("Shutting down")
-	cancel()
-	time.Sleep(2 * time.Second)
 }
