@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chunguyenduc/git_commit_etl/internal/adapter/github"
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
+	"github.com/chunguyenduc/git_commit_etl/internal/file"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
 	"github.com/chunguyenduc/git_commit_etl/internal/utils"
 	"github.com/rs/zerolog/log"
@@ -16,24 +17,30 @@ import (
 type Extractor struct {
 	client     github.RepoClient
 	cfg        *config.SourceDataConfig
-	fileWriter *FileWriter
+	fileWriter *file.Writer
 }
 
-func New(cfg *config.SourceDataConfig) *Extractor {
+func New(cfg *config.SourceDataConfig) (*Extractor, error) {
+	fw, err := file.NewFileWriter(cfg.StorageDir)
+	if err != nil {
+		return nil, err
+	}
 	return &Extractor{
 		client:     github.NewRepoClient(cfg.GitHubRepo),
 		cfg:        cfg,
-		fileWriter: NewFileWriter(cfg.StorageDir),
-	}
+		fileWriter: fw,
+	}, nil
 }
 
 func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate time.Time) (*model.ExtractedData, error) {
 	var mu sync.Mutex
-	result := make([]*github.CommitResponse, 0)
+	result := make([]*github.CommitResponse, 0, 100)
 
 	requestChan := make(chan *github.ListCommitRequest)
 	quit := make(chan struct{})
-	stop := make(chan struct{}, 3)
+
+	numWorker := 5
+	stopProducerChan := make(chan struct{}, numWorker)
 	group, ctx := errgroup.WithContext(ctx)
 
 	go func() {
@@ -53,7 +60,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 		}
 	}()
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < numWorker; i++ {
 		group.Go(func() error {
 			for request := range requestChan {
 				response, err := e.client.ListCommits(ctx, request)
@@ -62,7 +69,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 				}
 
 				if len(response) == 0 {
-					stop <- struct{}{}
+					stopProducerChan <- struct{}{}
 				}
 
 				mu.Lock()
@@ -74,7 +81,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 	}
 
 	group.Go(func() error {
-		<-stop
+		<-stopProducerChan
 		close(quit)
 		return nil
 	})

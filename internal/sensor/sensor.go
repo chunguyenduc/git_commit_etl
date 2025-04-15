@@ -13,11 +13,13 @@ type FileSensor struct {
 func NewFileSensor(dirs []string) (*FileSensor, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
+		log.Error().Err(err).Msg("Error creating file watcher")
 		return nil, err
 	}
 
 	for _, dir := range dirs {
 		if err := watcher.Add(dir); err != nil {
+			log.Error().Err(err).Msg("Error adding file watcher")
 			return nil, err
 		}
 	}

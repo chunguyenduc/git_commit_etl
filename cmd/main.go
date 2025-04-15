@@ -22,7 +22,10 @@ func main() {
 		panic(err)
 	}
 
-	process := processor.New(cfg)
+	process, err := processor.New(cfg)
+	if err != nil {
+		log.Ctx(ctx).Fatal().Err(err).Msg("Failed to create processor")
+	}
 	go func() {
 		if err := process.Run(ctx); err != nil {
 			log.Err(err).Msg("process error")

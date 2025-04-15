@@ -14,11 +14,15 @@ type Processor struct {
 	extractor *extractor.Extractor
 }
 
-func New(cfg *config.Config) *Processor {
-	return &Processor{
-		extractor: extractor.New(cfg.SourceData),
-		cfg:       cfg,
+func New(cfg *config.Config) (*Processor, error) {
+	extr, err := extractor.New(cfg.SourceData)
+	if err != nil {
+		return nil, err
 	}
+	return &Processor{
+		extractor: extr,
+		cfg:       cfg,
+	}, nil
 }
 
 func (e *Processor) Run(ctx context.Context) error {
@@ -27,11 +31,9 @@ func (e *Processor) Run(ctx context.Context) error {
 	go func(ctx context.Context) {
 		fs, err := sensor.NewFileSensor([]string{e.cfg.SourceData.StorageDir})
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to create sensor")
 			return
 		}
 		if err := fs.Listen(ctx); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to listen")
 			return
 		}
 	}(ctx)
