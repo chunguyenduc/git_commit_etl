@@ -6,8 +6,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type HandlerFunc func(event fsnotify.Event) error
+
 type FileSensor struct {
 	watcher *fsnotify.Watcher
+	handler HandlerFunc
 }
 
 func NewFileSensor(dirs []string) (*FileSensor, error) {
