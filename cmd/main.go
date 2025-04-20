@@ -6,9 +6,6 @@ import (
 	"github.com/chunguyenduc/git_commit_etl/internal/logger"
 	"github.com/chunguyenduc/git_commit_etl/internal/processor"
 	"github.com/rs/zerolog/log"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
@@ -22,18 +19,13 @@ func main() {
 		panic(err)
 	}
 
-	process, err := processor.New(cfg)
+	process, err := processor.New(ctx, cfg)
 	if err != nil {
 		log.Ctx(ctx).Fatal().Err(err).Msg("Failed to create processor")
 	}
-	go func() {
-		if err := process.Run(ctx); err != nil {
-			log.Err(err).Msg("process error")
-		}
-	}()
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-	log.Info().Msg("Shutting down")
+	if err := process.Run(ctx); err != nil {
+		log.Err(err).Msg("process error")
+		return
+	}
 }

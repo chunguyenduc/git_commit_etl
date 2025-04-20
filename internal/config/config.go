@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"github.com/chunguyenduc/git_commit_etl/internal/database"
 	"github.com/chunguyenduc/git_commit_etl/internal/validator"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -9,7 +10,9 @@ import (
 )
 
 type Config struct {
-	SourceData *SourceDataConfig `mapstructure:"source_data" validate:"required"`
+	Extractor   *ExtractorConfig   `mapstructure:"extractor" validate:"required"`
+	Transformer *TransformerConfig `mapstructure:"transformer" validate:"required"`
+	Loader      *LoaderConfig      `mapstructure:"loader" validate:"required"`
 }
 
 type (
@@ -18,10 +21,18 @@ type (
 		Owner   string `mapstructure:"owner" validate:"required"`
 		Repo    string `mapstructure:"repo" validate:"required"`
 	}
-	SourceDataConfig struct {
-		GitHubRepo  *GitHubRepoConfig `mapstructure:"github_repo" validate:"required"`
+	ExtractorConfig struct {
+		SourceData  *GitHubRepoConfig `mapstructure:"source_data" validate:"required"`
 		MonthCounts int               `mapstructure:"month_counts" validate:"required"`
 		StorageDir  string            `mapstructure:"storage_dir" validate:"required"`
+	}
+
+	TransformerConfig struct {
+		StorageDir string `mapstructure:"storage_dir" validate:"required"`
+	}
+
+	LoaderConfig struct {
+		DestinationData *database.PostgresConfig `mapstructure:"destination_data" validate:"required"`
 	}
 )
 

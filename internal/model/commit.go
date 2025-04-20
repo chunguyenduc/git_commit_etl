@@ -18,9 +18,9 @@ func (d *ExtractedData) Serialize() ([]byte, error) {
 
 type Commit struct {
 	SHA              string    `json:"sha"`
-	CommiterID       int       `json:"commiter_id"`
-	CommiterUserName string    `json:"commiter_username"`
-	CommiterName     string    `json:"commiter_name"`
-	CommiterEmail    string    `json:"commiter_email"`
+	CommiterID       int       `json:"committer_id"`
+	CommiterUserName string    `json:"committer_username"`
+	CommiterName     string    `json:"committer_name"`
+	CommiterEmail    string    `json:"committer_email"`
 	CommitTS         time.Time `json:"commit_ts"`
 }

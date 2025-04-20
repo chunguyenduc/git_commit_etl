@@ -4,41 +4,59 @@ import (
 	"context"
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/chunguyenduc/git_commit_etl/internal/processor/extractor"
-	"github.com/chunguyenduc/git_commit_etl/internal/sensor"
+	"github.com/chunguyenduc/git_commit_etl/internal/processor/loader"
+	"github.com/chunguyenduc/git_commit_etl/internal/processor/transformer"
 	"github.com/rs/zerolog/log"
 	"time"
 )
 
 type Processor struct {
-	cfg       *config.Config
-	extractor *extractor.Extractor
+	cfg         *config.Config
+	extractor   *extractor.Extractor
+	transformer *transformer.Transformer
+	loader      *loader.Loader
 }
 
-func New(cfg *config.Config) (*Processor, error) {
-	extr, err := extractor.New(cfg.SourceData)
+func New(ctx context.Context, cfg *config.Config) (*Processor, error) {
+	extractorEngine, err := extractor.New(cfg.Extractor)
 	if err != nil {
 		return nil, err
 	}
+
+	transformEngine, err := transformer.New(cfg.Transformer)
+	if err != nil {
+		return nil, err
+	}
+
+	loaderEngine, err := loader.New(ctx, cfg.Loader)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Processor{
-		extractor: extr,
-		cfg:       cfg,
+		extractor:   extractorEngine,
+		transformer: transformEngine,
+		loader:      loaderEngine,
+		cfg:         cfg,
 	}, nil
 }
 
-func (e *Processor) Run(ctx context.Context) error {
+func (p *Processor) Run(ctx context.Context) error {
 	startTime := time.Now()
 
-	go func(ctx context.Context) {
-		fs, err := sensor.NewFileSensor([]string{e.cfg.SourceData.StorageDir})
-		if err != nil {
-			return
-		}
-		if err := fs.Listen(ctx); err != nil {
-			return
-		}
-	}(ctx)
+	fileNames, err := p.extractor.Run(ctx)
+	if err != nil {
+		return err
+	}
 
-	if err := e.extractor.Run(ctx); err != nil {
+	log.Ctx(ctx).Info().Strs("file_names", fileNames).Msg("Saved file name")
+
+	dataChan, err := p.transformer.Transform(ctx, fileNames)
+	if err != nil {
+		return err
+	}
+
+	if err := p.loader.Load(ctx, dataChan); err != nil {
 		return err
 	}
 

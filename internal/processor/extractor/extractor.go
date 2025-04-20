@@ -16,24 +16,24 @@ import (
 
 type Extractor struct {
 	client     github.RepoClient
-	cfg        *config.SourceDataConfig
+	cfg        *config.ExtractorConfig
 	fileWriter *file.Writer
 }
 
-func New(cfg *config.SourceDataConfig) (*Extractor, error) {
+func New(cfg *config.ExtractorConfig) (*Extractor, error) {
 	fw, err := file.NewFileWriter(cfg.StorageDir)
 	if err != nil {
 		return nil, err
 	}
 	return &Extractor{
-		client:     github.NewRepoClient(cfg.GitHubRepo),
+		client:     github.NewRepoClient(cfg.SourceData),
 		cfg:        cfg,
 		fileWriter: fw,
 	}, nil
 }
 
 func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate time.Time) (*model.ExtractedData, error) {
-	var mu sync.Mutex
+	var mu sync.RWMutex
 	result := make([]*github.CommitResponse, 0, 100)
 
 	requestChan := make(chan *github.ListCommitRequest)
@@ -65,6 +65,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 			for request := range requestChan {
 				response, err := e.client.ListCommits(ctx, request)
 				if err != nil {
+					stopRequestChan <- struct{}{}
 					return err
 				}
 
@@ -98,9 +99,12 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 	}, nil
 }
 
-func (e *Extractor) Run(ctx context.Context) error {
+func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 	group, ctx := errgroup.WithContext(ctx)
 	group.SetLimit(10)
+
+	fileNames := make([]string, 0, e.cfg.MonthCounts)
+	var mu sync.RWMutex
 
 	for i := 0; i < e.cfg.MonthCounts; i++ {
 		startDate, endDate := buildStartEndDate(i)
@@ -115,7 +119,7 @@ func (e *Extractor) Run(ctx context.Context) error {
 
 			bytes, err := extractedData.Serialize()
 			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Error serializing extracted data")
+				logger.Err(err).Msg("Error serializing extracted data")
 				return err
 			}
 
@@ -124,17 +128,22 @@ func (e *Extractor) Run(ctx context.Context) error {
 				return err
 			}
 
-			logger.Info().Int("num_commits", len(extractedData.Commits)).Msg("Saved to file successfully")
+			logger.Info().Int("num_commits", len(extractedData.Commits)).Msg("Saved commits to file successfully")
+
+			mu.Lock()
+			fileNames = append(fileNames, fileName)
+			mu.Unlock()
+
 			return nil
 		})
 	}
 
 	if err := group.Wait(); err != nil {
 		log.Ctx(ctx).Err(err).Msg("Error running extractor")
-		return err
+		return nil, err
 	}
 
-	return nil
+	return fileNames, nil
 }
 
 func buildStartEndDate(i int) (time.Time, time.Time) {

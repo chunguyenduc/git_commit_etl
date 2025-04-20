@@ -13,6 +13,10 @@ type Author struct {
 	ID    int    `json:"id"`
 }
 
+func (a *Author) IsEmpty() bool {
+	return a == nil
+}
+
 type Commit struct {
 	Author *CommitAuthor `json:"author"`
 }
