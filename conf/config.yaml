@@ -5,6 +5,8 @@ extractor:
     repo: airflow
   month_counts: 6
   storage_dir: "./data/commits"
+  ingestor_worker: 6
+  extractor_worker: 10
 
 transformer:
   storage_dir: "./data/commits"

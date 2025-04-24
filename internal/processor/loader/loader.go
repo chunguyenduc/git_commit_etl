@@ -15,7 +15,7 @@ const (
 )
 
 type Loader struct {
-	CommitStore store.CommitStore
+	commitStore store.CommitStore
 }
 
 func New(ctx context.Context, cfg *config.LoaderConfig) (*Loader, error) {
@@ -29,7 +29,7 @@ func New(ctx context.Context, cfg *config.LoaderConfig) (*Loader, error) {
 	}
 
 	return &Loader{
-		CommitStore: store.NewCommitStore(db),
+		commitStore: store.NewCommitStore(db),
 	}, nil
 }
 
@@ -46,7 +46,7 @@ func (l *Loader) Load(ctx context.Context, dataChan chan *model.Commit) error {
 			commits = append(commits, data)
 
 			if len(commits) >= batchSize {
-				_ = l.CommitStore.InsertBatchCommits(ctx, commits)
+				_ = l.commitStore.InsertBatchCommits(ctx, commits)
 				commits = commits[:0]
 			}
 		}
@@ -54,7 +54,7 @@ func (l *Loader) Load(ctx context.Context, dataChan chan *model.Commit) error {
 
 	wg.Wait()
 	if len(commits) > 0 {
-		_ = l.CommitStore.InsertBatchCommits(ctx, commits)
+		_ = l.commitStore.InsertBatchCommits(ctx, commits)
 	}
 
 	log.Ctx(ctx).Info().Msgf("Load %d commits", count)

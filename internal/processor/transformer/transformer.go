@@ -10,6 +10,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	batchSize = 500
+)
+
 type Transformer struct {
 	fileReader *file.Reader
 }
@@ -22,7 +26,7 @@ func New(cfg *config.TransformerConfig) (*Transformer, error) {
 
 func (t *Transformer) Transform(ctx context.Context, fileNames []string) (chan *model.Commit, error) {
 	dataChanFunc := func(ctx context.Context, fileName string) (chan *model.Commit, error) {
-		result := make(chan *model.Commit, 500)
+		result := make(chan *model.Commit, batchSize)
 		data, err := t.fileReader.ReadFile(ctx, fileName)
 		if err != nil {
 			return nil, err

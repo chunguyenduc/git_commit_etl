@@ -42,7 +42,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 	requestChan := make(chan *github.ListCommitRequest)
 	doneChan := make(chan struct{})
 
-	numWorker := 5
+	numWorker := e.cfg.IngestorWorker
 	group, ctx := errgroup.WithContext(ctx)
 
 	go func() {
@@ -62,27 +62,29 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 		}
 	}()
 
-	for i := 0; i < numWorker; i++ {
-		group.Go(func() error {
-			for request := range requestChan {
-				response, err := e.client.ListCommits(ctx, request)
-				if err != nil {
-					return err
-				}
-
-				if len(response) == 0 {
-					once.Do(func() {
-						close(doneChan)
-					})
-					return nil
-				}
-
-				mu.Lock()
-				result = append(result, response...)
-				mu.Unlock()
+	workerFunc := func() error {
+		for request := range requestChan {
+			response, err := e.client.ListCommits(ctx, request)
+			if err != nil {
+				return err
 			}
-			return nil
-		})
+
+			if len(response) == 0 {
+				once.Do(func() {
+					close(doneChan)
+				})
+				return nil
+			}
+
+			mu.Lock()
+			result = append(result, response...)
+			mu.Unlock()
+		}
+		return nil
+	}
+
+	for i := 0; i < numWorker; i++ {
+		group.Go(workerFunc)
 	}
 
 	if err := group.Wait(); err != nil {
@@ -98,7 +100,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 
 func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 	group, ctx := errgroup.WithContext(ctx)
-	group.SetLimit(10)
+	group.SetLimit(e.cfg.ExtractorWorker)
 
 	fileNames := make([]string, 0, e.cfg.MonthCounts)
 	var mu sync.RWMutex

@@ -22,9 +22,11 @@ type (
 		Repo    string `mapstructure:"repo" validate:"required"`
 	}
 	ExtractorConfig struct {
-		SourceData  *GitHubRepoConfig `mapstructure:"source_data" validate:"required"`
-		MonthCounts int               `mapstructure:"month_counts" validate:"required"`
-		StorageDir  string            `mapstructure:"storage_dir" validate:"required"`
+		SourceData      *GitHubRepoConfig `mapstructure:"source_data" validate:"required"`
+		MonthCounts     int               `mapstructure:"month_counts" validate:"required"`
+		StorageDir      string            `mapstructure:"storage_dir" validate:"required"`
+		IngestorWorker  int               `mapstructure:"ingestor_worker" validate:"required,gt=0,lte=10"`
+		ExtractorWorker int               `mapstructure:"extractor_worker" validate:"required,gt=0,lte=10"`
 	}
 
 	TransformerConfig struct {
