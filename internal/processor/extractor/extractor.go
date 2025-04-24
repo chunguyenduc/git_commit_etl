@@ -33,14 +33,16 @@ func New(cfg *config.ExtractorConfig) (*Extractor, error) {
 }
 
 func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate time.Time) (*model.ExtractedData, error) {
-	var mu sync.RWMutex
-	result := make([]*github.CommitResponse, 0, 100)
+	var (
+		mu   sync.Mutex
+		once sync.Once
+	)
+	result := make([]*github.CommitResponse, 0)
 
 	requestChan := make(chan *github.ListCommitRequest)
-	quit := make(chan struct{})
+	doneChan := make(chan struct{})
 
 	numWorker := 5
-	stopRequestChan := make(chan struct{}, numWorker)
 	group, ctx := errgroup.WithContext(ctx)
 
 	go func() {
@@ -54,7 +56,7 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 			}:
 			case <-ctx.Done():
 				return
-			case <-quit:
+			case <-doneChan:
 				return
 			}
 		}
@@ -65,12 +67,13 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 			for request := range requestChan {
 				response, err := e.client.ListCommits(ctx, request)
 				if err != nil {
-					stopRequestChan <- struct{}{}
 					return err
 				}
 
 				if len(response) == 0 {
-					stopRequestChan <- struct{}{}
+					once.Do(func() {
+						close(doneChan)
+					})
 					return nil
 				}
 
@@ -81,12 +84,6 @@ func (e *Extractor) CollectCommitsByDate(ctx context.Context, startDate, endDate
 			return nil
 		})
 	}
-
-	group.Go(func() error {
-		<-stopRequestChan
-		close(quit)
-		return nil
-	})
 
 	if err := group.Wait(); err != nil {
 		return nil, err

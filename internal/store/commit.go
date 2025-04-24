@@ -1,4 +1,4 @@
-package postgres
+package store
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 type CommitStore interface {
-	UpsertBatchCommits(ctx context.Context, commits []*model.Commit) error
+	InsertBatchCommits(ctx context.Context, commits []*model.Commit) error
 }
 
 type commitStore struct {
@@ -24,7 +24,7 @@ func NewCommitStore(db *sql.DB) CommitStore {
 	return &commitStore{db: db}
 }
 
-func (s *commitStore) UpsertBatchCommits(ctx context.Context, commits []*model.Commit) error {
+func (s *commitStore) InsertBatchCommits(ctx context.Context, commits []*model.Commit) error {
 	valueStrings := make([]string, 0, len(commits))
 	valueArgs := make([]interface{}, 0, len(commits)*6)
 	for i, commit := range commits {

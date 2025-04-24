@@ -6,8 +6,8 @@ import (
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/chunguyenduc/git_commit_etl/pkg/http"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
-	"log/slog"
 	"os"
 	"time"
 )
@@ -45,7 +45,8 @@ func (c *repoClient) ListCommits(ctx context.Context, request *ListCommitRequest
 
 	var resp []*CommitResponse
 	if err := jsoniter.Unmarshal(respBytes, &resp); err != nil {
-		slog.ErrorContext(ctx, "Failed to unmarshal list")
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to unmarshal list")
+		return nil, err
 	}
 
 	return resp, nil
