@@ -2,7 +2,7 @@
 
 ## Overview
 
-A massive shoutout to my bro whose brilliant Python ETL pipeline inspired this Golang version
+A massive shoutout to my bro [vuthanhhai2302](https://github.com/vuthanhhai2302) whose brilliant Python ETL pipeline inspired this Golang version
 
 The code will run using a main script and all the processing function will be wrapped in the `processor` folder.
 
