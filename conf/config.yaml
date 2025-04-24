@@ -1,0 +1,23 @@
+extractor:
+  source_data:
+    base_url: "https://api.github.com/repos"
+    owner: apache
+    repo: airflow
+  month_counts: 6
+  storage_dir: "./data/commits"
+  ingestor_worker: 6
+  extractor_worker: 10
+
+transformer:
+  storage_dir: "./data/commits"
+
+loader:
+  destination_data:
+    host: localhost
+    port: 5432
+    username: postgres
+    password: password
+    schema: postgres
+    max_idle_connections: 10
+    max_open_connections: 10
+    max_life_time: 180s
