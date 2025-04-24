@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 	"github.com/chunguyenduc/git_commit_etl/internal/database"
-	"github.com/chunguyenduc/git_commit_etl/internal/validator"
+	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"path"
@@ -40,6 +40,8 @@ const (
 	configDir = "conf"
 )
 
+var validate = validator.New()
+
 func LoadConfig(ctx context.Context) (*Config, error) {
 	viper.SetConfigFile(path.Join(configDir, "config.yaml"))
 	err := viper.ReadInConfig()
@@ -54,7 +56,7 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
-	if err := validator.Struct(cfg); err != nil {
+	if err := validate.Struct(cfg); err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to validate config")
 		return nil, err
 	}

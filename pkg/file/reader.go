@@ -2,7 +2,6 @@ package file
 
 import (
 	"context"
-	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/rs/zerolog/log"
 	"os"
 	"path"
@@ -12,9 +11,9 @@ type Reader struct {
 	storageDir string
 }
 
-func NewFileReader(cfg *config.TransformerConfig) *Reader {
+func NewFileReader(storageDir string) *Reader {
 	return &Reader{
-		storageDir: cfg.StorageDir,
+		storageDir: storageDir,
 	}
 }
 

@@ -3,9 +3,9 @@ package transformer
 import (
 	"context"
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
-	"github.com/chunguyenduc/git_commit_etl/internal/file"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
 	"github.com/chunguyenduc/git_commit_etl/internal/utils"
+	"github.com/chunguyenduc/git_commit_etl/pkg/file"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
 )
@@ -16,7 +16,7 @@ type Transformer struct {
 
 func New(cfg *config.TransformerConfig) (*Transformer, error) {
 	return &Transformer{
-		fileReader: file.NewFileReader(cfg),
+		fileReader: file.NewFileReader(cfg.StorageDir),
 	}, nil
 }
 
