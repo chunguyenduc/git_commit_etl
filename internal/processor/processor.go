@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"database/sql"
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/chunguyenduc/git_commit_etl/internal/processor/extractor"
 	"github.com/chunguyenduc/git_commit_etl/internal/processor/loader"
@@ -17,7 +18,7 @@ type Processor struct {
 	loader      *loader.Loader
 }
 
-func New(ctx context.Context, cfg *config.Config) (*Processor, error) {
+func New(cfg *config.Config, db *sql.DB) (*Processor, error) {
 	extractorEngine, err := extractor.New(cfg.Extractor)
 	if err != nil {
 		return nil, err
@@ -28,7 +29,7 @@ func New(ctx context.Context, cfg *config.Config) (*Processor, error) {
 		return nil, err
 	}
 
-	loaderEngine, err := loader.New(ctx, cfg.Loader)
+	loaderEngine, err := loader.New(db)
 	if err != nil {
 		return nil, err
 	}

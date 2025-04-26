@@ -2,12 +2,14 @@ package loader
 
 import (
 	"context"
-	"github.com/chunguyenduc/git_commit_etl/internal/config"
-	"github.com/chunguyenduc/git_commit_etl/internal/database"
+	"database/sql"
+	"errors"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
 	"github.com/chunguyenduc/git_commit_etl/internal/store"
+	"github.com/chunguyenduc/git_commit_etl/internal/utils"
 	"github.com/rs/zerolog/log"
 	"sync"
+	"time"
 )
 
 const (
@@ -18,33 +20,28 @@ type Loader struct {
 	commitStore store.CommitStore
 }
 
-func New(ctx context.Context, cfg *config.LoaderConfig) (*Loader, error) {
-	db, err := database.ConnectPostgresDB(ctx, cfg.DestinationData)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := database.Migrate(ctx, db); err != nil {
-		return nil, err
-	}
-
+func New(db *sql.DB) (*Loader, error) {
 	return &Loader{
 		commitStore: store.NewCommitStore(db),
 	}, nil
 }
 
 func (l *Loader) Load(ctx context.Context, dataChan chan *model.Commit) error {
+	pipelineRunDate := utils.ToDateStr(time.Now())
+	if err := l.commitStore.DeleteCommitsByRunDate(ctx, pipelineRunDate); err != nil {
+		return err
+	}
+
 	var wg sync.WaitGroup
-	count := 0
+	var count int64
 	commits := make([]*model.Commit, 0)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for data := range dataChan {
-			count++
 			commits = append(commits, data)
-
+			count++
 			if len(commits) >= batchSize {
 				_ = l.commitStore.InsertBatchCommits(ctx, commits)
 				commits = commits[:0]
@@ -57,6 +54,16 @@ func (l *Loader) Load(ctx context.Context, dataChan chan *model.Commit) error {
 		_ = l.commitStore.InsertBatchCommits(ctx, commits)
 	}
 
-	log.Ctx(ctx).Info().Msgf("Load %d commits", count)
+	countRows, err := l.commitStore.CountCommitsByRunDate(ctx, pipelineRunDate)
+	if err != nil {
+		return err
+	}
+
+	if countRows != count {
+		err := errors.New("miss match loading total row of data")
+		log.Ctx(ctx).Error().Err(err).Send()
+		return err
+	}
+
 	return nil
 }
