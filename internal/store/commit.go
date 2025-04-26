@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
+	"github.com/chunguyenduc/git_commit_etl/internal/utils"
 	"github.com/rs/zerolog/log"
 	"strings"
 	"time"
@@ -12,6 +13,8 @@ import (
 
 type CommitStore interface {
 	InsertBatchCommits(ctx context.Context, commits []*model.Commit) error
+	DeleteCommitsByRunDate(ctx context.Context, runDate string) error
+	CountCommitsByRunDate(ctx context.Context, runDate string) (int64, error)
 }
 
 type commitStore struct {
@@ -35,7 +38,7 @@ func (s *commitStore) InsertBatchCommits(ctx context.Context, commits []*model.C
 		valueArgs = append(valueArgs, commit.CommiterName)
 		valueArgs = append(valueArgs, commit.CommiterEmail)
 		valueArgs = append(valueArgs, commit.CommitTS)
-		valueArgs = append(valueArgs, time.Now())
+		valueArgs = append(valueArgs, utils.ToDateStr(time.Now()))
 	}
 
 	statement := fmt.Sprintf("INSERT INTO commit_staging("+
@@ -53,4 +56,32 @@ func (s *commitStore) InsertBatchCommits(ctx context.Context, commits []*model.C
 	}
 
 	return nil
+}
+
+func (s *commitStore) DeleteCommitsByRunDate(ctx context.Context, runDate string) error {
+	statement := "DELETE FROM commit_staging WHERE pipeline_run_date=$1"
+	_, err := s.db.ExecContext(ctx, statement, runDate)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to delete commits")
+		return err
+	}
+
+	return nil
+}
+
+func (s *commitStore) CountCommitsByRunDate(ctx context.Context, runDate string) (int64, error) {
+	statement := "SELECT COUNT(*) FROM commit_staging WHERE pipeline_run_date=$1"
+	row := s.db.QueryRowContext(ctx, statement, runDate)
+	if err := row.Err(); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to count commits")
+		return -1, err
+	}
+
+	var count int64
+	if err := row.Scan(&count); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to scan row count commits")
+		return -1, err
+	}
+
+	return count, nil
 }
