@@ -28,7 +28,9 @@ func main() {
 	defer func(db *sql.DB) {
 		if err := db.Close(); err != nil {
 			log.Ctx(ctx).Error().Err(err).Send()
+			return
 		}
+		log.Ctx(ctx).Info().Msg("Close database successfully")
 	}(db)
 
 	if err := database.Migrate(ctx, db); err != nil {
