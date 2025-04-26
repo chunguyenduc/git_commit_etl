@@ -39,7 +39,7 @@ The pipeline run date is determined using the current date. Config is loaded fro
    The `Transformer` loads the commit data from the files and converts it into a channel of commit model instances (`Commit`) for downstream processing
 
 5. **Data Loading:**  
-   A connection to PostgreSQL is established. Existing records for the current pipeline run date are deleted, and the new commit data is batch-inserted into the target table.
+   The `Loader` uses the established PostgresQL connection to create `CommitStore`. Existing records for the current pipeline run date are deleted, and the new commit data is batch-inserted into the target table.
 
 6. **Post-Load Validation:**  
    The pipeline verifies that the number of rows loaded into PostgreSQL matches the expected count from the file storage. If there is a mismatch, an error is logged and raised.
