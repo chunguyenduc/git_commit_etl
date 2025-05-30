@@ -9,7 +9,3 @@ func StartOfMonth(month time.Month, year int) time.Time {
 func AddMonth(t time.Time, month int) time.Time {
 	return t.AddDate(0, month, 0)
 }
-
-func ToDateStr(t time.Time) string {
-	return t.Format(time.DateOnly)
-}
