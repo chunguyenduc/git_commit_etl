@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
-	"github.com/chunguyenduc/git_commit_etl/internal/utils"
 	"github.com/rs/zerolog/log"
 	"strings"
 	"time"
@@ -38,7 +37,7 @@ func (s *commitStore) InsertBatchCommits(ctx context.Context, commits []*model.C
 		valueArgs = append(valueArgs, commit.CommiterName)
 		valueArgs = append(valueArgs, commit.CommiterEmail)
 		valueArgs = append(valueArgs, commit.CommitTS)
-		valueArgs = append(valueArgs, utils.ToDateStr(time.Now()))
+		valueArgs = append(valueArgs, time.Now().Format(time.DateOnly))
 	}
 
 	statement := fmt.Sprintf("INSERT INTO commit_staging("+

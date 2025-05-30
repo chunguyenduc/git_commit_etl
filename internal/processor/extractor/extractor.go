@@ -107,7 +107,7 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 
 	for i := 0; i < e.cfg.MonthCounts; i++ {
 		startDate, endDate := buildStartEndDate(i)
-		logger := log.Ctx(ctx).With().Str("start_date", utils.ToDateStr(startDate)).Str("end_date", utils.ToDateStr(endDate)).Logger()
+		logger := log.Ctx(ctx).With().Strs("date_range", []string{startDate.Format(time.DateOnly), endDate.Format(time.DateOnly)}).Logger()
 
 		group.Go(func() error {
 			logger.Info().Msg("Start fetching commits")
@@ -148,11 +148,11 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 func buildStartEndDate(i int) (time.Time, time.Time) {
 	currentTime := time.Now()
 
-	startTime := utils.AddMonth(currentTime, -i)
-	endTime := utils.AddMonth(currentTime, -i+1)
+	startTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
+	endTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
 
-	startDate := utils.StartOfMonth(startTime.Month(), startTime.Year())
-	endDate := utils.StartOfMonth(endTime.Month(), endTime.Year())
+	startDate := utils.AddMonth(startTime, -i)
+	endDate := utils.AddMonth(endTime, -i+1)
 
 	return startDate, endDate
 }

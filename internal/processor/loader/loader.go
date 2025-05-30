@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
 	"github.com/chunguyenduc/git_commit_etl/internal/store"
-	"github.com/chunguyenduc/git_commit_etl/internal/utils"
 	"github.com/rs/zerolog/log"
 	"sync"
 	"time"
@@ -27,7 +26,7 @@ func New(db *sql.DB) (*Loader, error) {
 }
 
 func (l *Loader) Load(ctx context.Context, dataChan chan *model.Commit) error {
-	pipelineRunDate := utils.ToDateStr(time.Now())
+	pipelineRunDate := time.Now().Format(time.DateOnly)
 	if err := l.commitStore.DeleteCommitsByRunDate(ctx, pipelineRunDate); err != nil {
 		return err
 	}
@@ -60,7 +59,7 @@ func (l *Loader) Load(ctx context.Context, dataChan chan *model.Commit) error {
 	}
 
 	if countRows != count {
-		err := errors.New("miss match loading total row of data")
+		err := errors.New("mismatch loading total row of data")
 		log.Ctx(ctx).Error().Err(err).Send()
 		return err
 	}
