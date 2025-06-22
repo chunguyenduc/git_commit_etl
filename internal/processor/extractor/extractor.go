@@ -21,14 +21,14 @@ type Extractor struct {
 }
 
 func New(cfg *config.ExtractorConfig) (*Extractor, error) {
-	fw, err := file.NewFileWriter(cfg.StorageDir)
+	fileWriter, err := file.NewFileWriter(cfg.StorageDir)
 	if err != nil {
 		return nil, err
 	}
 	return &Extractor{
 		client:     github.NewRepoClient(cfg.SourceData),
 		cfg:        cfg,
-		fileWriter: fw,
+		fileWriter: fileWriter,
 	}, nil
 }
 
@@ -103,10 +103,11 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 	group.SetLimit(e.cfg.ExtractorWorker)
 
 	fileNames := make([]string, 0, e.cfg.MonthCounts)
+	currentTime := time.Now()
 	var mu sync.RWMutex
 
 	for i := 0; i < e.cfg.MonthCounts; i++ {
-		startDate, endDate := buildStartEndDate(i)
+		startDate, endDate := buildStartEndDate(currentTime, i)
 		logger := log.Ctx(ctx).With().Strs("date_range", []string{startDate.Format(time.DateOnly), endDate.Format(time.DateOnly)}).Logger()
 
 		group.Go(func() error {
@@ -145,14 +146,10 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 	return fileNames, nil
 }
 
-func buildStartEndDate(i int) (time.Time, time.Time) {
-	currentTime := time.Now()
-
+func buildStartEndDate(currentTime time.Time, i int) (time.Time, time.Time) {
 	startTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
-	endTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
 
 	startDate := utils.AddMonth(startTime, -i)
-	endDate := utils.AddMonth(endTime, -i+1)
-
+	endDate := utils.AddMonth(startTime, -i+1)
 	return startDate, endDate
 }

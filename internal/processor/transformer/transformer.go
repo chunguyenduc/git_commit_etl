@@ -65,15 +65,15 @@ func (t *Transformer) Transform(ctx context.Context, fileNames []string) (chan *
 		return result, nil
 	}
 
-	dataChans := make([]chan *model.Commit, 0, len(fileNames))
+	dataChannels := make([]chan *model.Commit, 0, len(fileNames))
 	for _, fileName := range fileNames {
 		dataFunc, err := dataChanFunc(ctx, fileName)
 		if err != nil {
 			return nil, err
 		}
 
-		dataChans = append(dataChans, dataFunc)
+		dataChannels = append(dataChannels, dataFunc)
 	}
 
-	return utils.FanIn[*model.Commit](dataChans...), nil
+	return utils.FanIn[*model.Commit](dataChannels...), nil
 }
