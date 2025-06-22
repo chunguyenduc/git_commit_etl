@@ -103,10 +103,11 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 	group.SetLimit(e.cfg.ExtractorWorker)
 
 	fileNames := make([]string, 0, e.cfg.MonthCounts)
+	currentTime := time.Now()
 	var mu sync.RWMutex
 
 	for i := 0; i < e.cfg.MonthCounts; i++ {
-		startDate, endDate := buildStartEndDate(i)
+		startDate, endDate := buildStartEndDate(currentTime, i)
 		logger := log.Ctx(ctx).With().Strs("date_range", []string{startDate.Format(time.DateOnly), endDate.Format(time.DateOnly)}).Logger()
 
 		group.Go(func() error {
@@ -145,12 +146,10 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 	return fileNames, nil
 }
 
-func buildStartEndDate(i int) (time.Time, time.Time) {
-	currentTime := time.Now()
+func buildStartEndDate(currentTime time.Time, i int) (time.Time, time.Time) {
 	startTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
 
 	startDate := utils.AddMonth(startTime, -i)
 	endDate := utils.AddMonth(startTime, -i+1)
-
 	return startDate, endDate
 }
