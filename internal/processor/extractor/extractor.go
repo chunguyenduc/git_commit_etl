@@ -21,14 +21,14 @@ type Extractor struct {
 }
 
 func New(cfg *config.ExtractorConfig) (*Extractor, error) {
-	fw, err := file.NewFileWriter(cfg.StorageDir)
+	fileWriter, err := file.NewFileWriter(cfg.StorageDir)
 	if err != nil {
 		return nil, err
 	}
 	return &Extractor{
 		client:     github.NewRepoClient(cfg.SourceData),
 		cfg:        cfg,
-		fileWriter: fw,
+		fileWriter: fileWriter,
 	}, nil
 }
 
@@ -149,7 +149,7 @@ func buildStartEndDate(i int) (time.Time, time.Time) {
 	currentTime := time.Now()
 
 	startTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
-	endTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
+	endTime := startTime
 
 	startDate := utils.AddMonth(startTime, -i)
 	endDate := utils.AddMonth(endTime, -i+1)
