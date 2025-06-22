@@ -147,12 +147,10 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 
 func buildStartEndDate(i int) (time.Time, time.Time) {
 	currentTime := time.Now()
-
 	startTime := utils.StartOfMonth(currentTime.Month(), currentTime.Year())
-	endTime := startTime
 
 	startDate := utils.AddMonth(startTime, -i)
-	endDate := utils.AddMonth(endTime, -i+1)
+	endDate := utils.AddMonth(startTime, -i+1)
 
 	return startDate, endDate
 }
