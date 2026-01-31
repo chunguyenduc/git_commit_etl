@@ -2,15 +2,17 @@ package database
 
 import (
 	"context"
-	"database/sql"
+
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type PostgresConfig struct {
@@ -24,27 +26,35 @@ type PostgresConfig struct {
 	MaxOpenConnections int           `mapstructure:"max_open_connections" validate:"required"`
 }
 
-func ConnectPostgresDB(ctx context.Context, cfg *PostgresConfig) (*sql.DB, error) {
+func ConnectPostgresDB(ctx context.Context, cfg *PostgresConfig) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.Schema)
-	db, err := sql.Open("postgres", dsn)
+
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	config.MaxConns = int32(cfg.MaxOpenConnections)
+	config.MinConns = int32(cfg.MaxIdleConnections)
+	config.MaxConnLifetime = cfg.MaxLifeTime
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to init database")
 		return nil, err
 	}
 
-	db.SetConnMaxLifetime(cfg.MaxLifeTime)
-	db.SetMaxIdleConns(cfg.MaxIdleConnections)
-	db.SetMaxOpenConns(cfg.MaxOpenConnections)
-
-	if err := db.Ping(); err != nil {
+	if err := pool.Ping(ctx); err != nil {
 		log.Error().Err(err).Msg("Failed to ping database")
 		return nil, err
 	}
 
-	return db, nil
+	return pool, nil
 }
 
-func Migrate(ctx context.Context, db *sql.DB) error {
+func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
+	db := stdlib.OpenDBFromPool(pool)
+	defer db.Close()
 	instance, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to init instance")

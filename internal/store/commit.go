@@ -2,13 +2,12 @@ package store
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"github.com/chunguyenduc/git_commit_etl/internal/model"
-	"github.com/chunguyenduc/git_commit_etl/internal/utils"
-	"github.com/rs/zerolog/log"
-	"strings"
 	"time"
+
+	"github.com/chunguyenduc/git_commit_etl/internal/model"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 )
 
 type CommitStore interface {
@@ -18,49 +17,43 @@ type CommitStore interface {
 }
 
 type commitStore struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
 var _ CommitStore = (*commitStore)(nil)
 
-func NewCommitStore(db *sql.DB) CommitStore {
+func NewCommitStore(db *pgxpool.Pool) CommitStore {
 	return &commitStore{db: db}
 }
 
-func (s *commitStore) InsertBatchCommits(ctx context.Context, commits []*model.Commit) error {
-	valueStrings := make([]string, 0, len(commits))
-	valueArgs := make([]interface{}, 0, len(commits)*6)
-	for i, commit := range commits {
-		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*7+1, i*7+2, i*7+3, i*7+4, i*7+5, i*7+6, i*7+7))
-		valueArgs = append(valueArgs, commit.SHA)
-		valueArgs = append(valueArgs, commit.CommiterID)
-		valueArgs = append(valueArgs, commit.CommiterUserName)
-		valueArgs = append(valueArgs, commit.CommiterName)
-		valueArgs = append(valueArgs, commit.CommiterEmail)
-		valueArgs = append(valueArgs, commit.CommitTS)
-		valueArgs = append(valueArgs, utils.ToDateStr(time.Now()))
-	}
+const (
+	insertCommitStatement           = "INSERT INTO commit_staging(sha, committer_id, committer_username, committer_name, committer_email, commit_ts, pipeline_run_date) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+	deleteCommitsByRunDateStatement = "DELETE FROM commit_staging WHERE pipeline_run_date=$1"
+	countCommitsByRunDateStatement  = "SELECT COUNT(*) FROM commit_staging WHERE pipeline_run_date=$1"
+)
 
-	statement := fmt.Sprintf("INSERT INTO commit_staging("+
-		"sha, "+
-		"committer_id, "+
-		"committer_username, "+
-		"committer_name, "+
-		"committer_email, "+
-		"commit_ts, "+
-		"pipeline_run_date) VALUES %s", strings.Join(valueStrings, ","))
-	_, err := s.db.ExecContext(ctx, statement, valueArgs...)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to insert commits")
-		return err
+func (s *commitStore) InsertBatchCommits(ctx context.Context, commits []*model.Commit) error {
+	batch := &pgx.Batch{}
+	for _, commit := range commits {
+		batch.Queue(insertCommitStatement,
+			commit.SHA, commit.CommiterID, commit.CommiterUserName, commit.CommiterName, commit.CommiterEmail, commit.CommitTS, time.Now().Format(time.DateOnly))
+	}
+	results := s.db.SendBatch(ctx, batch)
+	defer results.Close()
+
+	for range commits {
+		_, err := results.Exec()
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("Failed to insert a commit in batch")
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (s *commitStore) DeleteCommitsByRunDate(ctx context.Context, runDate string) error {
-	statement := "DELETE FROM commit_staging WHERE pipeline_run_date=$1"
-	_, err := s.db.ExecContext(ctx, statement, runDate)
+	_, err := s.db.Exec(ctx, deleteCommitsByRunDateStatement, runDate)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to delete commits")
 		return err
@@ -70,12 +63,7 @@ func (s *commitStore) DeleteCommitsByRunDate(ctx context.Context, runDate string
 }
 
 func (s *commitStore) CountCommitsByRunDate(ctx context.Context, runDate string) (int64, error) {
-	statement := "SELECT COUNT(*) FROM commit_staging WHERE pipeline_run_date=$1"
-	row := s.db.QueryRowContext(ctx, statement, runDate)
-	if err := row.Err(); err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to count commits")
-		return -1, err
-	}
+	row := s.db.QueryRow(ctx, countCommitsByRunDateStatement, runDate)
 
 	var count int64
 	if err := row.Scan(&count); err != nil {

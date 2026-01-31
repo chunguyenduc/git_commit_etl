@@ -3,10 +3,11 @@ package http
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Client struct {

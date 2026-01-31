@@ -3,13 +3,14 @@ package github
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/chunguyenduc/git_commit_etl/pkg/http"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
-	"os"
-	"time"
 )
 
 type RepoClient interface {

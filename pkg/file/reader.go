@@ -2,9 +2,10 @@ package file
 
 import (
 	"context"
-	"github.com/rs/zerolog/log"
 	"os"
 	"path"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Reader struct {

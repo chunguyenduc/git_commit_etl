@@ -10,6 +10,7 @@ extractor:
 
 transformer:
   storage_dir: "./data/commits"
+  batch_size: 500
 
 loader:
   destination_data:
@@ -21,3 +22,4 @@ loader:
     max_idle_connections: 10
     max_open_connections: 10
     max_life_time: 180s
+  batch_size: 500

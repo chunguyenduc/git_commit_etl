@@ -2,11 +2,12 @@ package config
 
 import (
 	"context"
+	"path"
+
 	"github.com/chunguyenduc/git_commit_etl/internal/database"
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"path"
 )
 
 type Config struct {
@@ -31,10 +32,12 @@ type (
 
 	TransformerConfig struct {
 		StorageDir string `mapstructure:"storage_dir" validate:"required"`
+		BatchSize  int    `mapstructure:"batch_size" validate:"required,gt=0"`
 	}
 
 	LoaderConfig struct {
 		DestinationData *database.PostgresConfig `mapstructure:"destination_data" validate:"required"`
+		BatchSize       int                      `mapstructure:"batch_size" validate:"required,gt=0"`
 	}
 )
 

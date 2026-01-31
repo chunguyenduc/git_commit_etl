@@ -2,6 +2,7 @@ package transformer
 
 import (
 	"context"
+
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
 	"github.com/chunguyenduc/git_commit_etl/internal/utils"
@@ -10,23 +11,21 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	batchSize = 500
-)
-
 type Transformer struct {
 	fileReader *file.Reader
+	cfg        *config.TransformerConfig
 }
 
 func New(cfg *config.TransformerConfig) (*Transformer, error) {
 	return &Transformer{
 		fileReader: file.NewFileReader(cfg.StorageDir),
+		cfg:        cfg,
 	}, nil
 }
 
 func (t *Transformer) Transform(ctx context.Context, fileNames []string) (chan *model.Commit, error) {
 	dataChanFunc := func(ctx context.Context, fileName string) (chan *model.Commit, error) {
-		result := make(chan *model.Commit, batchSize)
+		result := make(chan *model.Commit, t.cfg.BatchSize)
 		data, err := t.fileReader.ReadFile(ctx, fileName)
 		if err != nil {
 			return nil, err

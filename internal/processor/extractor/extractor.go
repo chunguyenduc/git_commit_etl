@@ -3,6 +3,9 @@ package extractor
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/chunguyenduc/git_commit_etl/internal/adapter/github"
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/chunguyenduc/git_commit_etl/internal/model"
@@ -10,8 +13,6 @@ import (
 	"github.com/chunguyenduc/git_commit_etl/pkg/file"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
-	"sync"
-	"time"
 )
 
 type Extractor struct {
@@ -107,7 +108,7 @@ func (e *Extractor) Run(ctx context.Context) ([]string, error) {
 
 	for i := 0; i < e.cfg.MonthCounts; i++ {
 		startDate, endDate := buildStartEndDate(i)
-		logger := log.Ctx(ctx).With().Str("start_date", utils.ToDateStr(startDate)).Str("end_date", utils.ToDateStr(endDate)).Logger()
+		logger := log.Ctx(ctx).With().Str("start_date", startDate.Format(time.DateOnly)).Str("end_date", endDate.Format(time.DateOnly)).Logger()
 
 		group.Go(func() error {
 			logger.Info().Msg("Start fetching commits")

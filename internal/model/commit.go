@@ -1,9 +1,10 @@
 package model
 
 import (
+	"time"
+
 	"github.com/chunguyenduc/git_commit_etl/internal/adapter/github"
 	jsoniter "github.com/json-iterator/go"
-	"time"
 )
 
 type ExtractedData struct {

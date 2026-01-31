@@ -2,13 +2,14 @@ package processor
 
 import (
 	"context"
-	"database/sql"
+	"time"
+
 	"github.com/chunguyenduc/git_commit_etl/internal/config"
 	"github.com/chunguyenduc/git_commit_etl/internal/processor/extractor"
 	"github.com/chunguyenduc/git_commit_etl/internal/processor/loader"
 	"github.com/chunguyenduc/git_commit_etl/internal/processor/transformer"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type Processor struct {
@@ -18,7 +19,7 @@ type Processor struct {
 	loader      *loader.Loader
 }
 
-func New(cfg *config.Config, db *sql.DB) (*Processor, error) {
+func New(cfg *config.Config, db *pgxpool.Pool) (*Processor, error) {
 	extractorEngine, err := extractor.New(cfg.Extractor)
 	if err != nil {
 		return nil, err
@@ -29,7 +30,7 @@ func New(cfg *config.Config, db *sql.DB) (*Processor, error) {
 		return nil, err
 	}
 
-	loaderEngine, err := loader.New(db)
+	loaderEngine, err := loader.New(db, cfg.Loader)
 	if err != nil {
 		return nil, err
 	}
